@@ -31,7 +31,8 @@ def add_text_box(
             text=info['text'],
             color=info.get('color', 'white'),
             # Optional: Specify font, stroke_color, stroke_width etc.
-            font='font.ttf',
+            font='VeganStylePersonalUse-5Y58.ttf',
+            font_size=info.get('fontsize', 24),
             # method='caption', # Use 'caption' for auto-wrapping if needed
             # size=(video_clip.w * 0.8, None) # Example: max width 80% of video
         )
@@ -47,16 +48,14 @@ def add_text_box(
             # Use ColorClip for solid background
             bg_clip = ColorClip(
                 size=(bg_width, bg_height),
-                color=tuple(
-                    np.array(ColorClip.COLOR_NAME_TO_RGB[info['bg_color']]) *
-                    255)  # Requires numpy
+                color=(255, 255, 255)  # Requires numpy
             )
             if 'bg_opacity' in info:
-                bg_clip = bg_clip.set_opacity(info['bg_opacity'])
+                bg_clip = bg_clip.with_opacity(info['bg_opacity'])
 
             # Composite text onto the background, centering text within the padded box
             txt_on_bg_clip = CompositeVideoClip(
-                [bg_clip, txt_clip.set_position('center')],
+                [bg_clip, txt_clip.with_position('center')],
                 size=(bg_width, bg_height
                       )  # Ensure composite clip has the bg size
             )
@@ -66,10 +65,10 @@ def add_text_box(
             final_text_element = txt_clip
 
         # Set position, start time, and duration/end time
-        final_text_element = final_text_element.set_position(
+        final_text_element = final_text_element.with_position(
             info.get('pos', 'center'))
-        final_text_element = final_text_element.set_start(info['start'])
-        final_text_element = final_text_element.set_end(info['end'])
+        final_text_element = final_text_element.with_start(info['start'])
+        final_text_element = final_text_element.with_end(info['end'])
         # Or use duration: .set_duration(info['end'] - info['start'])
 
         clips_to_composite.append(final_text_element)
