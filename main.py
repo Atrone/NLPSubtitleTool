@@ -93,33 +93,28 @@ def add_text_box(
 # --- Example Usage ---
 texts = [
     {
-        'text': 'Hello World!\nAppearing at 2s',
+        'text': 'This is the first test subtitle line.',
         'start': 2,
-        'end': 5,  # Show from second 2 to 5
-        'pos': ('left', 'top'),
-        'fontsize': 30,
-        'color': 'yellow',
-        'bg_color': 'blue',
-        'bg_opacity': 0.6
-    },
-    {
-        'text': 'Middle Text',
-        'start': 6,
-        'end': 9,  # Show from second 6 to 9
+        'end': 5.5,
         'pos': 'center',
-        'fontsize': 40,
-        'color': 'black',
-        'bg_color': 'white',
-        'bg_opacity': 0.8
+        'fontsize': 48,
+        'color': 'blue'
     },
     {
-        'text': 'Bottom Right\nNo Background',
+        'text': 'Here is a second subtitle entry.\nIt contains two lines.',
+        'start': 6.1,
+        'end': 9.8,
+        'pos': 'center',
+        'fontsize': 48,
+        'color': 'green'
+    },
+    {
+        'text': 'This is the third and final test line.',
         'start': 10,
-        'end': 13,  # Show from second 10 to 13
-        'pos': ('right', 'bottom'),
-        'fontsize': 25,
-        'color': 'red'
-        # No bg_color specified
+        'end': 13.25,
+        'pos': 'center',
+        'fontsize': 48,
+        'color': 'magenta'
     }
 ]
 
