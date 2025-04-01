@@ -3,6 +3,37 @@ from moviepy import VideoFileClip, TextClip, CompositeVideoClip, ColorClip
 import numpy as np  # Often needed for color clip dimensions
 
 
+def convert_text_format(text: str):
+    """
+    Converts text into a different format using a LLaMA-like language model from Hugging Face.
+    Returns the model's response string.
+
+    NOTE: This is an illustrative function. You should replace the model path and
+          adapt prompt instructions to suit your actual use case.
+    """
+    with open('subs.ass', 'r', encoding='utf-8') as file:
+        subtitle_text = file.read()
+        prompt_text = f"Convert this {subtitle_text} into this format: {text}. IT IS IMPORTANT THAT YOU DO NOT ADD ANY EXTRA TEXT. ONLY RETURN THE FORMATTED TEXT."
+        from llama_cpp import Llama
+        from replit.object_storage import Client
+        client = Client()
+
+        llm = Llama(
+              model_path="llama-model.gguf",
+              # n_gpu_layers=-1, # Uncomment to use GPU acceleration
+              # seed=1337, # Uncomment to set a specific seed
+              # n_ctx=2048, # Uncomment to increase the context window
+        )
+        output = llm(
+            prompt_text, # Prompt
+              max_tokens=3200, # Generate up to 32 tokens, set to None to generate up to the end of the context window
+              stop=["Q:", "\n"], # Stop generating just before the model would generate a new question
+              echo=True # Echo the prompt back in the output
+        ) # Generate a completion, can also call create_completion
+        print(output)
+        return output
+
+
 def add_text_box(
     input_video_path,
     output_video_path,
@@ -91,33 +122,32 @@ def add_text_box(
 
 
 # --- Example Usage ---
-texts = [
-    {
-        'text': 'This is the first test subtitle line.',
-        'start': 2,
-        'end': 5.5,
-        'pos': 'center',
-        'fontsize': 48,
-        'color': 'blue'
-    },
-    {
-        'text': 'Here is a second subtitle entry.\nIt contains two lines.',
-        'start': 6.1,
-        'end': 9.8,
-        'pos': 'center',
-        'fontsize': 48,
-        'color': 'green'
-    },
-    {
-        'text': 'This is the third and final test line.',
-        'start': 10,
-        'end': 13.25,
-        'pos': 'center',
-        'fontsize': 48,
-        'color': 'magenta'
-    }
-]
+texts = [{
+    'text': 'This is the first test subtitle line.',
+    'start': 2,
+    'end': 5.5,
+    'pos': 'center',
+    'fontsize': 48,
+    'color': 'blue'
+}, {
+    'text': 'Here is a second subtitle entry.\nIt contains two lines.',
+    'start': 6.1,
+    'end': 9.8,
+    'pos': 'center',
+    'fontsize': 48,
+    'color': 'green'
+}, {
+    'text': 'This is the third and final test line.',
+    'start': 10,
+    'end': 13.25,
+    'pos': 'center',
+    'fontsize': 48,
+    'color': 'magenta'
+}]
+
+print(str(convert_text_format(str(texts))))
 
 # Make sure 'input.mp4' exists
-add_text_box('input.mp4', 'output_with_text.mp4', texts)
+add_text_box('input.mp4', 'output_with_text.mp4',
+             str(convert_text_format(str(texts))))
 print("Video processing complete.")

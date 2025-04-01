@@ -13,3 +13,6 @@ requiredFiles = [".replit", "replit.nix"]
 [deployment]
 run = ["python3", "main.py"]
 deploymentTarget = "cloudrun"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-1cf2eae7-e9ed-4f96-982d-859046d244eb"
