@@ -31,7 +31,7 @@ def add_text_box(
             text=info['text'],
             color=info.get('color', 'white'),
             # Optional: Specify font, stroke_color, stroke_width etc.
-            font='LiberationSans',
+            font='font.ttf',
             # method='caption', # Use 'caption' for auto-wrapping if needed
             # size=(video_clip.w * 0.8, None) # Example: max width 80% of video
         )
