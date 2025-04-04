@@ -2,36 +2,148 @@
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, ColorClip
 import numpy as np  # Often needed for color clip dimensions
 
+import re
 
-def convert_text_format(text: str):
+
+def parse_ass_to_dicts_first_color(ass_text):
     """
-    Converts text into a different format using a LLaMA-like language model from Hugging Face.
-    Returns the model's response string.
-
-    NOTE: This is an illustrative function. You should replace the model path and
-          adapt prompt instructions to suit your actual use case.
+    Parse an ASS subtitle script and return a list of dictionaries like:
+      [
+        {
+          'text': 'This is the first test subtitle line.',
+          'start': 2.0,
+          'end': 5.5,
+          'pos': 'center',
+          'fontsize': 48,
+          'color': 'blue'
+        },
+        ...
+      ]
+    We take the *first* color code we find in each line and map it to a color name.
     """
-    with open('subs.ass', 'r', encoding='utf-8') as file:
-        subtitle_text = file.read()
-        prompt_text = f"Convert this {subtitle_text} into this format: {text}. IT IS IMPORTANT THAT YOU DO NOT ADD ANY EXTRA TEXT. ONLY RETURN THE FORMATTED TEXT."
-        from llama_cpp import Llama
-        from replit.object_storage import Client
-        client = Client()
 
-        llm = Llama(
-              model_path="llama-model.gguf",
-              # n_gpu_layers=-1, # Uncomment to use GPU acceleration
-              # seed=1337, # Uncomment to set a specific seed
-              # n_ctx=2048, # Uncomment to increase the context window
-        )
-        output = llm(
-            prompt_text, # Prompt
-              max_tokens=3200, # Generate up to 32 tokens, set to None to generate up to the end of the context window
-              stop=["Q:", "\n"], # Stop generating just before the model would generate a new question
-              echo=True # Echo the prompt back in the output
-        ) # Generate a completion, can also call create_completion
-        print(output)
-        return output
+    # Simple mapping from 6-digit RGB hex to color names you want.
+    # If you need more codes, just add them here:
+    color_map = {
+        '0000FF': 'blue',
+        '00FF00': 'green',
+        'FF0000': 'red',
+        'FFFF00': 'yellow',
+        'FF00FF': 'magenta',
+        'FFFFFF': 'white',
+        '000000': 'black'
+    }
+
+    # Regex to find color codes in text: e.g. {\1c&HFF00FF&}
+    color_tag_pattern = re.compile(r'\{\\1c&H([0-9A-Fa-f]{6})&\}')
+
+    # We will store found default font size from `[V4+ Styles]` if possible
+    default_fontsize = 48  # fallback if not found
+
+    texts = []
+
+    lines = ass_text.splitlines()
+    in_styles_section = False
+    in_events_section = False
+
+    for line in lines:
+        line_stripped = line.strip()
+
+        # Detect section starts
+        if line_stripped.startswith('[V4+ Styles]'):
+            in_styles_section = True
+            in_events_section = False
+            continue
+        elif line_stripped.startswith('[Events]'):
+            in_styles_section = False
+            in_events_section = True
+            continue
+
+        # --- Parse style line to find default font size ---
+        if in_styles_section and line_stripped.startswith('Style:'):
+            # Something like:
+            #  Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,...
+            parts = line_stripped.split(',')
+            # parts[0] = "Style: Default"
+            # parts[1] = "Arial"
+            # parts[2] = "48" <-- usually the font size
+            style_name = parts[0].split(':', 1)[1].strip()  # "Default"
+            if style_name.lower() == 'default':
+                try:
+                    default_fontsize = int(parts[2])
+                except:
+                    pass
+
+        # --- Parse "Dialogue:" lines in [Events] section ---
+        if in_events_section and line_stripped.startswith('Dialogue:'):
+            # The standard format after "Dialogue:" is comma-delimited:
+            #  Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+            # We'll do a split with a maxsplit=9 so we don't break the text if it contains commas
+            fields = line_stripped.split(',', 9)
+            if len(fields) < 10:
+                # Not well-formed, skip
+                continue
+
+            # fields[1] = Start e.g. 0:00:02.00
+            # fields[2] = End   e.g. 0:00:05.50
+            # fields[9] = "Text"
+
+            start_str = fields[1].strip()
+            end_str = fields[2].strip()
+            text_raw = fields[9].strip()
+
+            # Convert start, end times (h:mm:ss.xx) to float seconds if you like:
+            start_seconds = _ass_time_to_seconds(start_str)
+            end_seconds = _ass_time_to_seconds(end_str)
+
+            # Find the *first* color code if it exists
+            found_colors = color_tag_pattern.findall(text_raw)
+            chosen_color = None
+            if found_colors:
+                first_code = found_colors[0].upper()  # e.g. "0000FF"
+                chosen_color = color_map.get(
+                    first_code, 'white')  # default if not recognized
+            else:
+                chosen_color = 'white'
+
+            # Remove all color tags from the text
+            text_clean = color_tag_pattern.sub('', text_raw)
+
+            # Also remove empty {\1c}, if present (to revert color) – for cleanliness
+            text_clean = re.sub(r'\{\\1c\}', '', text_clean)
+
+            # Replace \N with actual newlines
+            text_clean = text_clean.replace(r'\N', '\n')
+
+            # For the sake of the example, let's assume position is always center
+            # because the style alignment was "2" for center in your example.
+            pos = 'center'
+
+            # Build the dictionary
+            item = {
+                'text': text_clean,
+                'start': start_seconds,
+                'end': end_seconds,
+                'pos': pos,
+                'fontsize': default_fontsize,
+                'color': chosen_color
+            }
+            texts.append(item)
+    print(texts)
+    return texts
+
+
+def _ass_time_to_seconds(timestr):
+    """
+    Convert an ASS time string like '0:00:06.10' into float seconds (6.1).
+    """
+    # Usually in format H:MM:SS.xx or HH:MM:SS.xx
+    # e.g. "0:00:06.10"
+    h, m, s = timestr.split(':')
+    hours = int(h)
+    minutes = int(m)
+    seconds = float(s)
+    return hours * 3600 + minutes * 60 + seconds
 
 
 def add_text_box(
@@ -57,6 +169,7 @@ def add_text_box(
     clips_to_composite = [video_clip]  # Start with the base video
 
     for info in text_info_list:
+        # if it has synonyms or antonyms, add the text box
         # Create the text clip
         txt_clip = TextClip(
             text=info['text'],
@@ -121,33 +234,9 @@ def add_text_box(
     final_clip.close()
 
 
-# --- Example Usage ---
-texts = [{
-    'text': 'This is the first test subtitle line.',
-    'start': 2,
-    'end': 5.5,
-    'pos': 'center',
-    'fontsize': 48,
-    'color': 'blue'
-}, {
-    'text': 'Here is a second subtitle entry.\nIt contains two lines.',
-    'start': 6.1,
-    'end': 9.8,
-    'pos': 'center',
-    'fontsize': 48,
-    'color': 'green'
-}, {
-    'text': 'This is the third and final test line.',
-    'start': 10,
-    'end': 13.25,
-    'pos': 'center',
-    'fontsize': 48,
-    'color': 'magenta'
-}]
-
-print(str(convert_text_format(str(texts))))
-
-# Make sure 'input.mp4' exists
-add_text_box('input.mp4', 'output_with_text.mp4',
-             str(convert_text_format(str(texts))))
-print("Video processing complete.")
+with open('subs.ass', 'r') as f:
+    ass_text = f.read()
+    # Make sure 'input.mp4' exists
+    add_text_box('input.mp4', 'output_with_text.mp4',
+                 parse_ass_to_dicts_first_color(ass_text))
+    print("Video processing complete.")
