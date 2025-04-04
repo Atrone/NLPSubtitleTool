@@ -8,7 +8,7 @@ def read_mp4_from_storage(object_name):
     Args:
         object_name: Name of the MP4 file in storage
     Returns:
-        bytes: The MP4 file contents as bytes
+        tuple: (bytes, str) containing the file contents as bytes and filename
     """
     # Create object storage client
     client = Client()
@@ -21,9 +21,9 @@ def read_mp4_from_storage(object_name):
     video_bytes = buffer.getvalue()
     buffer.close()
     
-    return video_bytes
+    return video_bytes, object_name
 
 # Example usage:
 if __name__ == "__main__":
-    video_data = read_mp4_from_storage("example.mp4")
-    print(f"Read {len(video_data)} bytes from storage")
+    video_data, filename = read_mp4_from_storage("example.mp4")
+    print(f"Read {len(video_data)} bytes from file {filename}")
