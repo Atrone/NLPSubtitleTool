@@ -165,6 +165,8 @@ def add_text_box(
                                       'pos' can be tuple (x,y) or ('center', 'top'), etc.
                                       'bg_opacity' ranges from 0 (transparent) to 1 (opaque).
     """
+
+    
     video_clip = VideoFileClip(input_video_path)
     clips_to_composite = [video_clip]  # Start with the base video
 
